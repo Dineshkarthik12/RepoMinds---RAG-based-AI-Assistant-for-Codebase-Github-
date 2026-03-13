@@ -1,0 +1,41 @@
+# ─── Cloned repositories ──────────────────────────
+repos/
+
+# ─── FAISS index data ─────────────────────────────
+faiss_index/
+
+# ─── Environment & secrets ────────────────────────
+.env
+.env.*
+
+# ─── Python ───────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+*.egg
+.venv/
+venv/
+env/
+
+# ─── IDE / Editor ─────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ─── OS generated ─────────────────────────────────
+Thumbs.db
+.DS_Store
+Desktop.ini
+ehthumbs.db
+
+# ─── Streamlit ────────────────────────────────────
+.streamlit/secrets.toml
+
+# ─── Misc ─────────────────────────────────────────
+*.log
