@@ -1,0 +1,23 @@
+services:
+  # The FastAPI Backend Service
+  - type: web
+    name: repominds-backend
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn api:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: OPENROUTER_API_KEY
+        sync: false # Do not store your API key here, enter it in Render's dashboard!
+
+  # The Streamlit Frontend Service
+  - type: web
+    name: repominds-frontend
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: streamlit run app.py --server.port $PORT --server.address 0.0.0.0
+    envVars:
+      - key: API_URL
+        fromService:
+          type: web
+          name: repominds-backend
+          envVarKey: RENDER_EXTERNAL_URL # Automatically grabs the deployed backend's URL

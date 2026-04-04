@@ -4,6 +4,7 @@ A Streamlit app that analyzes GitHub repositories and answers
 developer queries using FAISS vector search + Gemini LLM.
 """
 
+import os
 import streamlit as st
 from pathlib import Path
 
@@ -205,7 +206,8 @@ with st.sidebar:
                         "done": "✅ Complete",
                     }
 
-                    response = requests.post("http://localhost:8000/ingest", json={"repo_url": repo_url}, stream=True)
+                    backend_url = os.getenv("API_URL", "http://localhost:8000")
+                    response = requests.post(f"{backend_url}/ingest", json={"repo_url": repo_url}, stream=True)
                     if response.status_code != 200:
                         raise Exception(f"Backend error: {response.text}")
 
@@ -362,7 +364,8 @@ else:
             with st.spinner("Thinking…"):
                 try:
                     import requests
-                    response = requests.post("http://localhost:8000/query", json={"question": user_question, "k": top_k})
+                    backend_url = os.getenv("API_URL", "http://localhost:8000")
+                    response = requests.post(f"{backend_url}/query", json={"question": user_question, "k": top_k})
                     if response.status_code != 200:
                         raise Exception(f"Backend error: {response.json().get('detail', response.text)}")
                     result = response.json()
