@@ -73,7 +73,7 @@ def generate_answer(query: str, context_chunks: list[dict]) -> str:
     )
 
     response = client.chat.completions.create(
-        model="google/gemini-2.0-flash-001",
+        model="nvidia/nemotron-3-super-120b-a12b:free",
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": user_prompt},

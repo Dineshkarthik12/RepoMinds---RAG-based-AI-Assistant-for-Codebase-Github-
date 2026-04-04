@@ -11,52 +11,52 @@ from .vector_store import build_index, save_index, load_index, search
 from .llm import generate_answer
 
 
-def ingest(repo_url: str, progress_callback=None) -> dict:
+def ingest(repo_url: str):
     """Clone a repo, chunk its code, embed, and build a FAISS index.
 
     Args:
         repo_url: GitHub repository URL.
-        progress_callback: optional callable(stage: str, detail: str)
-                           for UI progress updates.
 
-    Returns:
-        dict with stats: {repo_name, num_files, num_chunks, index_size}
+    Yields:
+        dict: Progress updates or final stats dict.
     """
     def _progress(stage, detail=""):
-        if progress_callback:
-            progress_callback(stage, detail)
+        return {"type": "progress", "stage": stage, "detail": detail}
 
     # 1. Clone
-    _progress("clone", f"Cloning {repo_url}…")
+    yield _progress("clone", f"Cloning {repo_url}…")
     repo_path = clone_repo(repo_url)
     repo_name = repo_path.name
 
     # 2. Extract code files
-    _progress("extract", "Extracting code files…")
+    yield _progress("extract", "Extracting code files…")
     code_files = extract_code_files(repo_path)
     if not code_files:
         raise ValueError("No code files found in the repository.")
 
     # 3. Chunk
-    _progress("chunk", f"Chunking {len(code_files)} files…")
+    yield _progress("chunk", f"Chunking {len(code_files)} files…")
     chunks = chunk_all_files(code_files)
 
     # 4. Embed
-    _progress("embed", f"Embedding {len(chunks)} chunks…")
+    yield _progress("embed", f"Embedding {len(chunks)} chunks…")
     embeddings = embed_chunks(chunks)
 
     # 5. Build & save FAISS index
-    _progress("index", "Building FAISS index…")
+    yield _progress("index", "Building FAISS index…")
     index = build_index(embeddings)
     save_index(index, chunks)
 
-    _progress("done", "✅ Repository ingested successfully!")
+    yield _progress("done", "✅ Repository ingested successfully!")
 
-    return {
-        "repo_name": repo_name,
-        "num_files": len(code_files),
-        "num_chunks": len(chunks),
-        "index_size": index.ntotal,
+    yield {
+        "type": "result",
+        "stats": {
+            "repo_name": repo_name,
+            "num_files": len(code_files),
+            "num_chunks": len(chunks),
+            "index_size": index.ntotal,
+        }
     }
 
 

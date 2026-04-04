@@ -193,25 +193,37 @@ with st.sidebar:
         else:
             with st.status("Ingesting repository…", expanded=True) as status:
                 try:
-                    from src.pipeline import ingest
+                    import requests
+                    import json
 
-                    def progress_cb(stage, detail):
-                        stage_labels = {
-                            "clone": "📥 Cloning",
-                            "extract": "📄 Extracting",
-                            "chunk": "🔪 Chunking",
-                            "embed": "🧠 Embedding",
-                            "index": "📦 Indexing",
-                            "done": "✅ Complete",
-                        }
-                        label = stage_labels.get(stage, stage)
-                        st.write(f"{label}: {detail}")
+                    stage_labels = {
+                        "clone": "📥 Cloning",
+                        "extract": "📄 Extracting",
+                        "chunk": "🔪 Chunking",
+                        "embed": "🧠 Embedding",
+                        "index": "📦 Indexing",
+                        "done": "✅ Complete",
+                    }
 
-                    stats = ingest(repo_url, progress_callback=progress_cb)
-                    st.session_state.ingested = True
-                    st.session_state.stats = stats
-                    st.session_state.chat_history = []
-                    status.update(label="✅ Repository ingested!", state="complete")
+                    response = requests.post("http://localhost:8000/ingest", json={"repo_url": repo_url}, stream=True)
+                    if response.status_code != 200:
+                        raise Exception(f"Backend error: {response.text}")
+
+                    for line in response.iter_lines():
+                        if line:
+                            data = json.loads(line)
+                            if data.get("type") == "error":
+                                raise Exception(data.get("detail"))
+                            elif data.get("type") == "progress":
+                                stage = data.get("stage")
+                                detail = data.get("detail")
+                                label = stage_labels.get(stage, stage)
+                                st.write(f"{label}: {detail}")
+                            elif data.get("type") == "result":
+                                st.session_state.ingested = True
+                                st.session_state.stats = data.get("stats")
+                                st.session_state.chat_history = []
+                                status.update(label="✅ Repository ingested!", state="complete")
 
                 except Exception as e:
                     status.update(label="❌ Ingestion failed", state="error")
@@ -349,8 +361,11 @@ else:
         with st.chat_message("assistant", avatar="🧠"):
             with st.spinner("Thinking…"):
                 try:
-                    from src.pipeline import query
-                    result = query(user_question, k=top_k)
+                    import requests
+                    response = requests.post("http://localhost:8000/query", json={"question": user_question, "k": top_k})
+                    if response.status_code != 200:
+                        raise Exception(f"Backend error: {response.json().get('detail', response.text)}")
+                    result = response.json()
 
                     st.markdown(result["answer"])
 
