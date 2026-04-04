@@ -3,18 +3,17 @@ embedder.py — Generate embeddings using sentence-transformers.
 """
 
 import numpy as np
-from sentence_transformers import SentenceTransformer
-
 # Singleton model instance to avoid reloading on every call
-_model: SentenceTransformer | None = None
+_model = None
 MODEL_NAME = "all-MiniLM-L6-v2"
 
 
-def _get_model() -> SentenceTransformer:
+def _get_model():
     """Lazy-load the embedding model."""
     global _model
     if _model is None:
         print(f"🧠 Loading embedding model: {MODEL_NAME}")
+        from sentence_transformers import SentenceTransformer
         _model = SentenceTransformer(MODEL_NAME)
         print("✅ Model loaded")
     return _model
