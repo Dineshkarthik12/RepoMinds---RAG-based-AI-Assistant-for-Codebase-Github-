@@ -1,11 +1,22 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import json
 
 from src.pipeline import ingest, query
 
-app = FastAPI(title="RepoMinds API", description="Backend for the RepoMinds Streamlit app")
+app = FastAPI(title="RepoMinds API", description="Backend for the RepoMinds React app")
+
+# Add CORS middleware to allow the React frontend (usually port 5173) 
+# and the Streamlit frontend (if still used) to connect.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # For development, allowing all; can be restricted later.
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 class IngestRequest(BaseModel):
     repo_url: str
@@ -36,10 +47,14 @@ async def api_ingest(req: IngestRequest):
 @app.post("/query")
 async def api_query(req: QueryRequest):
     """
-    Query the indexed repository.
+    Query the indexed repository. Returns a streaming response of JSON lines 
+    representing sources then subsequent answer tokens.
     """
-    try:
-        result = await query(req.question, k=req.k)
-        return result
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    async def event_stream():
+        try:
+            async for event in query(req.question, k=req.k):
+                yield json.dumps(event) + "\n"
+        except Exception as e:
+            yield json.dumps({"type": "error", "detail": str(e)}) + "\n"
+
+    return StreamingResponse(event_stream(), media_type="application/x-ndjson")

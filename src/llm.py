@@ -37,21 +37,23 @@ about a GitHub repository using the retrieved source-code snippets below.
 
 Guidelines:
 - Ground every claim in the provided code context.
-- Reference file paths and line numbers when relevant.
+- Reference file paths and line numbers when relevant (if asked for it).
 - If the context is insufficient to answer fully, say so honestly.
-- Use clear markdown formatting: headings, bullet points, and fenced code blocks.
+- Use clear markdown formatting: headings and bullet points.
+- Do not attach source or proof everywhere in the answer.
+- Attach source or proof only when asked for it. if the user did not ask for it, attach sources (relevant code snippets) at the end of the answer.
 """
 
 
-async def generate_answer(query: str, context_chunks: list[dict]) -> str:
-    """Build a prompt from retrieved chunks and generate an LLM answer.
+async def generate_answer(query: str, context_chunks: list[dict]):
+    """Build a prompt from retrieved chunks and yield streaming LLM answer chunks.
 
     Args:
         query: The user's natural-language question.
         context_chunks: list of chunk dicts from vector search.
 
-    Returns:
-        The LLM-generated answer string.
+    Yields:
+        str: Tokens/chunks of the LLM-generated answer.
     """
     client = _get_client()
 
@@ -78,5 +80,9 @@ async def generate_answer(query: str, context_chunks: list[dict]) -> str:
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": user_prompt},
         ],
+        stream=True,  # ENABLE STREAMING
     )
-    return response.choices[0].message.content
+
+    async for chunk in response:
+        if chunk.choices[0].delta.content:
+            yield chunk.choices[0].delta.content

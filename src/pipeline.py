@@ -90,15 +90,15 @@ async def ingest(repo_url: str):
     }
 
 
-async def query(question: str, k: int = 5) -> dict:
-    """Answer a developer question using the indexed repository (Asynchronous).
+async def query(question: str, k: int = 5):
+    """Answer a developer question using the indexed repository (Asynchronous & Streaming).
 
     Args:
         question: natural-language question.
         k: number of chunks to retrieve.
 
-    Returns:
-        dict with {answer: str, sources: list[dict]}
+    Yields:
+        dict: Metadata (sources) or answer tokens.
     """
     # Load persisted index (Disk I/O)
     index, chunks = await asyncio.to_thread(load_index)
@@ -109,10 +109,9 @@ async def query(question: str, k: int = 5) -> dict:
     # Retrieve top-k chunks
     results = await asyncio.to_thread(search, index, q_embedding, chunks, k=k)
 
-    # Generate answer via LLM (Network I/O)
-    answer = await generate_answer(question, results)
+    # 1. Immediately yield sources so the UI can display them
+    yield {"type": "sources", "sources": results}
 
-    return {
-        "answer": answer,
-        "sources": results,
-    }
+    # 2. Yield LLM answer tokens in real-time
+    async for token in generate_answer(question, results):
+        yield {"type": "token", "token": token}

@@ -25,11 +25,12 @@ st.markdown("""
 /* ── Global ── */
 html, body, [class*="css"] {
     font-family: 'Inter', sans-serif;
+    background-color: #0B0E14;
 }
 
-/* ── Header gradient ── */
+/* ── Header gradient (Teal to Cyan) ── */
 .main-header {
-    background: linear-gradient(135deg, #6C63FF 0%, #8B5CF6 50%, #A855F7 100%);
+    background: linear-gradient(135deg, #00F5D4 0%, #00D2FF 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     font-size: 2.8rem;
@@ -37,6 +38,7 @@ html, body, [class*="css"] {
     text-align: center;
     padding: 0.5rem 0;
     letter-spacing: -1px;
+    font-family: 'JetBrains Mono', monospace;
 }
 
 .sub-header {
@@ -48,22 +50,22 @@ html, body, [class*="css"] {
     font-weight: 300;
 }
 
-/* ── Glass card ── */
+/* ── Glass card (Darker with Teal border) ── */
 .glass-card {
-    background: rgba(26, 29, 41, 0.6);
+    background: rgba(17, 25, 40, 0.75);
     backdrop-filter: blur(12px);
-    border: 1px solid rgba(108, 99, 255, 0.2);
+    border: 1px solid rgba(0, 245, 212, 0.2);
     border-radius: 16px;
     padding: 1.5rem;
     margin-bottom: 1rem;
     transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 .glass-card:hover {
-    border-color: rgba(108, 99, 255, 0.5);
-    box-shadow: 0 0 20px rgba(108, 99, 255, 0.1);
+    border-color: rgba(0, 245, 212, 0.5);
+    box-shadow: 0 0 20px rgba(0, 245, 212, 0.1);
 }
 
-/* ── Stat pills ── */
+/* ── Stat pills (Teal theme) ── */
 .stat-row {
     display: flex;
     gap: 1rem;
@@ -71,8 +73,8 @@ html, body, [class*="css"] {
     margin: 1rem 0;
 }
 .stat-pill {
-    background: linear-gradient(135deg, rgba(108,99,255,0.15), rgba(139,92,246,0.10));
-    border: 1px solid rgba(108, 99, 255, 0.25);
+    background: linear-gradient(135deg, rgba(0,245,212,0.1), rgba(0,210,255,0.05));
+    border: 1px solid rgba(0, 245, 212, 0.2);
     border-radius: 12px;
     padding: 0.75rem 1.25rem;
     flex: 1;
@@ -82,7 +84,7 @@ html, body, [class*="css"] {
 .stat-pill .stat-value {
     font-size: 1.6rem;
     font-weight: 700;
-    color: #A78BFA;
+    color: #00F5D4;
 }
 .stat-pill .stat-label {
     font-size: 0.78rem;
@@ -92,61 +94,61 @@ html, body, [class*="css"] {
     margin-top: 2px;
 }
 
-/* ── Source chip ── */
+/* ── Source chip (Teal theme) ── */
 .source-chip {
     display: inline-block;
-    background: rgba(108, 99, 255, 0.12);
-    border: 1px solid rgba(108, 99, 255, 0.3);
+    background: rgba(0, 245, 212, 0.1);
+    border: 1px solid rgba(0, 245, 212, 0.3);
     border-radius: 8px;
     padding: 0.25rem 0.75rem;
     margin: 0.2rem;
     font-family: 'JetBrains Mono', monospace;
     font-size: 0.8rem;
-    color: #C4B5FD;
+    color: #00F5D4;
 }
 
 /* ── Sidebar styling ── */
 section[data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #0E1117 0%, #131620 100%);
-    border-right: 1px solid rgba(108, 99, 255, 0.1);
+    background: linear-gradient(180deg, #0B0E14 0%, #111827 100%);
+    border-right: 1px solid rgba(0, 245, 212, 0.1);
 }
 
-/* ── Buttons ── */
+/* ── Buttons (Teal gradient) ── */
 .stButton > button {
-    background: linear-gradient(135deg, #6C63FF, #8B5CF6) !important;
-    color: white !important;
+    background: linear-gradient(135deg, #00F5D4, #00D2FF) !important;
+    color: #0B0E14 !important;
     border: none !important;
     border-radius: 12px !important;
     padding: 0.6rem 1.5rem !important;
-    font-weight: 600 !important;
+    font-weight: 700 !important;
     font-size: 1rem !important;
     transition: all 0.3s ease !important;
     width: 100%;
 }
 .stButton > button:hover {
-    box-shadow: 0 4px 20px rgba(108, 99, 255, 0.4) !important;
+    box-shadow: 0 4px 20px rgba(0, 245, 212, 0.4) !important;
     transform: translateY(-1px);
 }
 
 /* ── Text input ── */
 .stTextInput > div > div > input,
 .stTextArea > div > div > textarea {
-    background: rgba(26, 29, 41, 0.8) !important;
-    border: 1px solid rgba(108, 99, 255, 0.25) !important;
+    background: rgba(17, 25, 40, 0.8) !important;
+    border: 1px solid rgba(0, 245, 212, 0.2) !important;
     border-radius: 12px !important;
     color: #FAFAFA !important;
     font-family: 'Inter', sans-serif !important;
 }
 .stTextInput > div > div > input:focus,
 .stTextArea > div > div > textarea:focus {
-    border-color: #6C63FF !important;
-    box-shadow: 0 0 0 2px rgba(108, 99, 255, 0.2) !important;
+    border-color: #00F5D4 !important;
+    box-shadow: 0 0 0 2px rgba(0, 245, 212, 0.2) !important;
 }
 
 /* ── Chat messages ── */
 .answer-block {
-    background: rgba(26, 29, 41, 0.5);
-    border-left: 3px solid #6C63FF;
+    background: rgba(17, 25, 40, 0.5);
+    border-left: 3px solid #00F5D4;
     border-radius: 0 12px 12px 0;
     padding: 1.25rem;
     margin: 1rem 0;
@@ -155,8 +157,8 @@ section[data-testid="stSidebar"] {
 /* ── Scrollbar ── */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(108, 99, 255, 0.3); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(108, 99, 255, 0.5); }
+::-webkit-scrollbar-thumb { background: rgba(0, 245, 212, 0.3); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0, 245, 212, 0.5); }
 </style>
 """, unsafe_allow_html=True)
 

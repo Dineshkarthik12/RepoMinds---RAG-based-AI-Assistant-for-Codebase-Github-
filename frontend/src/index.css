@@ -1,0 +1,44 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  background-color: #000000;
+  color: #fafafa;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden; /* Main app will handle scrolling */
+}
+
+/* ── Custom Glassmorphism Utility ── */
+.glass-effect {
+  @apply bg-cyber-glass backdrop-blur-md border border-cyber-border rounded-2xl;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.glass-effect:hover {
+  @apply border-cyber-border-hover shadow-[0_0_20px_rgba(0,245,212,0.1)];
+}
+
+/* ── Custom Scrollbar ── */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 245, 212, 0.2);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 245, 212, 0.4);
+}
