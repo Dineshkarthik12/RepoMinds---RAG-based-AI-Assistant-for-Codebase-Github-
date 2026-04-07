@@ -15,17 +15,17 @@ class QueryRequest(BaseModel):
     k: int = 5
 
 @app.post("/ingest")
-def api_ingest(req: IngestRequest):
+async def api_ingest(req: IngestRequest):
     """
-    Ingest a GitHub repository. Returns a streaming response of JSON lines 
+    Ingest a GitHub repository via API. Returns a streaming response of JSON lines 
     representing progress updates, ending with the final stat block.
     """
     if not req.repo_url or not req.repo_url.startswith("http"):
         raise HTTPException(status_code=400, detail="Invalid GitHub URL provided.")
 
-    def event_stream():
+    async def event_stream():
         try:
-            for event in ingest(req.repo_url):
+            async for event in ingest(req.repo_url):
                 yield json.dumps(event) + "\n"
         except Exception as e:
             # Yield error event so the frontend can catch it
@@ -34,12 +34,12 @@ def api_ingest(req: IngestRequest):
     return StreamingResponse(event_stream(), media_type="application/x-ndjson")
 
 @app.post("/query")
-def api_query(req: QueryRequest):
+async def api_query(req: QueryRequest):
     """
     Query the indexed repository.
     """
     try:
-        result = query(req.question, k=req.k)
+        result = await query(req.question, k=req.k)
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

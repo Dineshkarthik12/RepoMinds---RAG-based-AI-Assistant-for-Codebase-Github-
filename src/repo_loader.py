@@ -1,19 +1,15 @@
 """
-repo_loader.py — Clone GitHub repositories and extract code files.
+repo_loader.py — Fetch repository contents recursively using the GitHub API.
 """
 
 import os
-import stat
-import shutil
+import asyncio
+import httpx
+import ssl
 from pathlib import Path
-from git import Repo
+from dotenv import load_dotenv
 
-
-def _force_remove_readonly(func, path, _exc_info):
-    """Handle read-only files on Windows (e.g. .git pack files)."""
-    os.chmod(path, stat.S_IWRITE)
-    func(path)
-
+load_dotenv()
 
 # File extensions we consider as "code" worth indexing
 CODE_EXTENSIONS = {
@@ -25,70 +21,107 @@ CODE_EXTENSIONS = {
     ".dockerfile", ".tf", ".proto", ".graphql", ".vue", ".svelte",
 }
 
-# Directories to always skip
+# Directories to always skip (mostly for Git Trees API filtering)
 SKIP_DIRS = {
-    ".git", "node_modules", "venv", ".venv", "env", "__pycache__",
-    ".tox", ".mypy_cache", ".pytest_cache", "dist", "build",
-    ".next", ".nuxt", "vendor", "target", "bin", "obj",
-    ".idea", ".vscode", ".gradle", ".settings",
+    "node_modules", "venv", ".venv", "env", "__pycache__",
+    "dist", "build", "vendor", "target", "bin", "obj",
 }
 
-REPOS_DIR = Path("repos")
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 
 
-def clone_repo(github_url: str) -> Path:
-    """Clone a GitHub repository and return its local path.
-
-    If the repo already exists locally, it will be re-cloned fresh.
+def _get_ssl_context():
     """
-    # Derive repo name from URL
-    repo_name = github_url.rstrip("/").split("/")[-1].replace(".git", "")
-    dest = REPOS_DIR / repo_name
-
-    if dest.exists():
-        shutil.rmtree(dest, onerror=_force_remove_readonly)
-
-    REPOS_DIR.mkdir(parents=True, exist_ok=True)
-    print(f"📥 Cloning {github_url} → {dest}")
-    Repo.clone_from(github_url, str(dest), depth=1)  # shallow clone for speed
-    print("✅ Clone complete")
-    return dest
-
-
-def extract_code_files(repo_path: Path) -> list[dict]:
-    """Walk the repo and return a list of code-file dicts.
-
-    Returns:
-        list of {"path": relative_path, "content": file_text, "language": ext}
+    Create a secure SSL context using the system's native certificate store.
+    If VERIFY_SSL is explicitly set to 'False' in .env, returns False to disable verification.
     """
-    files = []
-    repo_path = Path(repo_path)
+    if os.getenv("VERIFY_SSL", "True").lower() == "false":
+        print("⚠️ SSL Verification is DISABLED")
+        return False
+        
+    try:
+        import truststore
+        return truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    except ImportError:
+        # Fallback to standard SSL context if truststore is missing
+        return ssl.create_default_context()
 
-    for root, dirs, filenames in os.walk(repo_path):
-        # Prune directories we don't care about (modifies walk in-place)
-        dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
 
-        for fname in filenames:
-            ext = Path(fname).suffix.lower()
-            if ext not in CODE_EXTENSIONS:
-                continue
+def _parse_repo_url(url: str) -> tuple[str, str]:
+    """Extract owner and repo name from a GitHub URL."""
+    parts = url.rstrip("/").split("/")
+    if len(parts) < 2:
+        raise ValueError(f"Invalid GitHub URL: {url}")
+    return parts[-2], parts[-1].replace(".git", "")
 
-            full_path = Path(root) / fname
-            rel_path = full_path.relative_to(repo_path).as_posix()
 
-            try:
-                content = full_path.read_text(encoding="utf-8", errors="ignore")
-            except Exception:
-                continue
+async def fetch_repo_contents(repo_url: str):
+    """
+    Fetch all code files from a GitHub repository using the Git Trees API.
+    
+    Yields:
+        Progress updates or the final list of code files.
+    """
+    owner, repo = _parse_repo_url(repo_url)
+    headers = {"Accept": "application/vnd.github.v3+json"}
+    if GITHUB_TOKEN:
+        headers["Authorization"] = f"token {GITHUB_TOKEN}"
 
-            if not content.strip():
-                continue
+    ssl_context = _get_ssl_context()
 
-            files.append({
-                "path": rel_path,
-                "content": content,
-                "language": ext.lstrip("."),
-            })
+    async with httpx.AsyncClient(headers=headers, timeout=30.0, verify=ssl_context) as client:
+        # 1. Get default branch
+        repo_api_url = f"https://api.github.com/repos/{owner}/{repo}"
+        resp = await client.get(repo_api_url)
+        if resp.status_code != 200:
+            raise Exception(f"Failed to fetch repo info: {resp.text}")
+        default_branch = resp.json().get("default_branch", "main")
 
-    print(f"📄 Extracted {len(files)} code files")
-    return files
+        # 2. Get recursive tree
+        tree_url = f"https://api.github.com/repos/{owner}/{repo}/git/trees/{default_branch}?recursive=1"
+        resp = await client.get(tree_url)
+        if resp.status_code != 200:
+            raise Exception(f"Failed to fetch git tree: {resp.text}")
+        
+        tree_data = resp.json()
+        if tree_data.get("truncated"):
+            # Note: For massive repos, this might be an issue. 
+            pass
+
+        # 3. Filter for code files
+        files_to_fetch = []
+        for item in tree_data.get("tree", []):
+            if item["type"] == "blob":
+                path = item["path"]
+                # Skip if any part of the path is in SKIP_DIRS
+                if any(part in SKIP_DIRS for part in Path(path).parts):
+                    continue
+                
+                ext = Path(path).suffix.lower()
+                if ext in CODE_EXTENSIONS:
+                    files_to_fetch.append(item)
+
+        return files_to_fetch
+
+
+async def download_file_content(client: httpx.AsyncClient, file_item: dict, semaphore: asyncio.Semaphore) -> dict:
+    """Download the content of a single file from GitHub."""
+    async with semaphore:
+        url = file_item["url"]
+        resp = await client.get(url)
+        if resp.status_code != 200:
+            return None
+        
+        import base64
+        data = resp.json()
+        try:
+            # GitHub API returns base64 encoded content for blobs
+            content = base64.b64decode(data["content"]).decode("utf-8", errors="ignore")
+        except Exception:
+            return None
+
+        return {
+            "path": file_item["path"],
+            "content": content,
+            "language": Path(file_item["path"]).suffix.lstrip("."),
+        }

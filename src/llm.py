@@ -1,10 +1,10 @@
 """
-llm.py — LLM-powered answer generation using OpenRouter.
+llm.py — LLM-powered answer generation using OpenRouter (Asynchronous).
 """
 
 import os
 
-from openai import OpenAI
+from openai import AsyncOpenAI
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -12,8 +12,8 @@ load_dotenv()
 _client = None
 
 
-def _get_client() -> OpenAI:
-    """Create/return a reusable OpenAI client pointed at OpenRouter."""
+def _get_client() -> AsyncOpenAI:
+    """Create/return a reusable AsyncOpenAI client pointed at OpenRouter."""
     global _client
     if _client is not None:
         return _client
@@ -24,7 +24,7 @@ def _get_client() -> OpenAI:
             "Create a .env file with OPENROUTER_API_KEY=your-key "
             "or set it as an environment variable."
         )
-    _client = OpenAI(
+    _client = AsyncOpenAI(
         base_url="https://openrouter.ai/api/v1",
         api_key=api_key,
     )
@@ -43,7 +43,7 @@ Guidelines:
 """
 
 
-def generate_answer(query: str, context_chunks: list[dict]) -> str:
+async def generate_answer(query: str, context_chunks: list[dict]) -> str:
     """Build a prompt from retrieved chunks and generate an LLM answer.
 
     Args:
@@ -72,7 +72,7 @@ def generate_answer(query: str, context_chunks: list[dict]) -> str:
         f"---\n\n## Developer Question\n\n{query}"
     )
 
-    response = client.chat.completions.create(
+    response = await client.chat.completions.create(
         model="nvidia/nemotron-3-super-120b-a12b:free",
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},

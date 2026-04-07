@@ -198,11 +198,10 @@ with st.sidebar:
                     import json
 
                     stage_labels = {
-                        "clone": "📥 Cloning",
-                        "extract": "📄 Extracting",
-                        "chunk": "🔪 Chunking",
-                        "embed": "🧠 Embedding",
-                        "index": "📦 Indexing",
+                        "fetch_metadata": "📡 Fetching Metadata",
+                        "extract": "📥 Downloading Files",
+                        "embed": "🧠 Embedding code",
+                        "index": "📦 Building Index",
                         "done": "✅ Complete",
                     }
 

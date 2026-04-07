@@ -10,7 +10,8 @@ RepoMinds clones a GitHub repo, chunks its source files, builds a FAISS vector i
 
 - **Semantic Code Search** — find relevant code by meaning, not just keywords
 - **AI-Powered Explanations** — clear, context-grounded answers with file & line references
-- **Fast Retrieval** — FAISS-powered vector search over thousands of code chunks
+- **GitHub API Ingestion** — index repositories directly via API (no local cloning required)
+- **Asynchronous Architecture** — fully non-blocking backend for high concurrency
 - **Multi-Language Support** — indexes Python, JavaScript, TypeScript, Java, Go, Rust, C/C++, and 30+ more languages
 - **Interactive Chat UI** — beautiful Streamlit interface with chat history and source-snippet expansion
 
@@ -19,12 +20,12 @@ RepoMinds clones a GitHub repo, chunks its source files, builds a FAISS vector i
 ## 🏗️ Architecture
 
 ```
-GitHub Repo URL
+GitHub API (Trees)
       │
       ▼
 ┌─────────────┐     ┌────────────┐     ┌────────────┐
-│  repo_loader │────▶│  chunker   │────▶│  embedder  │
-│  (clone)     │     │  (split)   │     │  (encode)  │
+│ repo_loader │────▶│  chunker   │────▶│  embedder  │
+│ (async fetch)│     │  (split)   │     │ (non-block)│
 └─────────────┘     └────────────┘     └─────┬──────┘
                                              │
                                              ▼
@@ -32,17 +33,18 @@ GitHub Repo URL
                                      │ vector_store  │
                                      │ (FAISS index) │
                                      └──────┬───────┘
-                                            │
-           User Question ──▶ embed ──▶ search ──▶ top-k chunks
-                                                      │
-                                                      ▼
-                                               ┌─────────┐
-                                               │   LLM   │
-                                               │ (Gemini) │
-                                               └────┬────┘
-                                                    │
-                                                    ▼
-                                              AI Answer
+                                             │
+                                             ▼
+            User Question ──▶ embed ──▶ search ──▶ top-k chunks
+                                                       │
+                                                       ▼
+                                                ┌─────────┐
+                                                │   LLM   │
+                                                │ (Async) │
+                                                └────┬────┘
+                                                     │
+                                                     ▼
+                                               AI Answer
 ```
 
 ---
@@ -54,12 +56,12 @@ RepoMinds/
 ├── app.py                  # Streamlit UI entry point
 ├── src/
 │   ├── __init__.py
-│   ├── repo_loader.py      # Clone repos & extract code files
+│   ├── repo_loader.py      # Fetch repos via GitHub API
 │   ├── chunker.py          # Split source code into chunks
-│   ├── embedder.py         # Sentence-Transformers embeddings
+│   ├── embedder.py         # Async Sentence-Transformers embeddings
 │   ├── vector_store.py     # FAISS index build / save / search
-│   ├── llm.py              # LLM answer generation (OpenRouter)
-│   └── pipeline.py         # End-to-end ingest & query orchestration
+│   ├── llm.py              # Async LLM generation (OpenRouter)
+│   └── pipeline.py         # Async ingest & query orchestration
 ├── test_components.py      # Smoke tests for pipeline components
 ├── .streamlit/
 │   └── config.toml         # Streamlit theme configuration
@@ -104,11 +106,12 @@ RepoMinds/
 
 4. **Configure environment variables**
 
-   Create a `.env` file in the project root:
+    Create a `.env` file in the project root:
 
-   ```env
-   OPENROUTER_API_KEY=your-openrouter-api-key
-   ```
+    ```env
+    OPENROUTER_API_KEY=your-openrouter-api-key
+    GITHUB_TOKEN=your-github-pat-xxxx (optional but recommended)
+    ```
 
 ### Run the App
 
@@ -160,7 +163,8 @@ This validates the chunker, embedder, FAISS vector store, and repo-loader import
 | Embeddings | [Sentence-Transformers](https://www.sbert.net/) (`all-MiniLM-L6-v2`) |
 | Vector Search | [FAISS](https://github.com/facebookresearch/faiss) |
 | LLM | [Gemini 2.0 Flash](https://deepmind.google/technologies/gemini/) via [OpenRouter](https://openrouter.ai/) |
-| Repo Cloning | [GitPython](https://gitpython.readthedocs.io/) |
+| Networking | [HTTPX](https://www.python-httpx.org/) (Async) |
+| GitHub API | [Git Trees API](https://docs.github.com/en/rest/git/trees) |
 
 ---
 
