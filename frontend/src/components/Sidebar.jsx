@@ -92,8 +92,9 @@ const Sidebar = ({ repoUrl, setRepoUrl, onIngest, ingestionStatus, stats }) => {
         )}
       </div>
 
-      <div className="pt-6 border-t border-cyber-border text-[10px] text-gray-600 text-center font-mono">
-        V2.0.0 — CYBER-TEAL EDITION
+      <div className="pt-6 border-t border-cyber-border text-[10px] text-gray-600 text-center font-mono uppercase tracking-widest">
+        <p className="mb-2 text-cyber-teal/60">Repositories are auto-deleted after 24 hours</p>
+        <p>V2.0.0 — CYBER-TEAL EDITION</p>
       </div>
     </aside>
   );

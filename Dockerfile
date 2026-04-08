@@ -14,6 +14,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Pre-download the embedding model to cache it in the image layer
+RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
+
 # Copy source code and api.py
 COPY src/ ./src/
 COPY api.py .

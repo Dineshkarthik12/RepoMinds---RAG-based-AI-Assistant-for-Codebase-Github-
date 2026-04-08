@@ -10,3 +10,4 @@ pydantic
 requests
 httpx
 truststore
+google-cloud-storage

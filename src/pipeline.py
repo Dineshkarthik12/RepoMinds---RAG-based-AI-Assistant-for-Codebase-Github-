@@ -13,17 +13,44 @@ from .embedder import embed_chunks, embed_query
 from .vector_store import build_index, save_index, load_index, search
 from .llm import generate_answer
 
-async def ingest(repo_url: str):
-    """Fetch repo contents via API, chunk, embed, and build a FAISS index.
+async def ingest(repo_url: str, user_id: str = "default"):
+    """Fetch repo contents, chunk, embed, and build index (with Smart Cache check).
 
     Args:
         repo_url: GitHub repository URL.
+        user_id: Unique identifier for the user's private storage folder.
 
     Yields:
         dict: Progress updates or final stats dict.
     """
     def _progress(stage, detail=""):
         return {"type": "progress", "stage": stage, "detail": detail}
+
+    # 1. Immediate Heartbeat
+    yield _progress("fetch_metadata", "🚀 Ingestion engine started...")
+
+    # 2. Smart Cache Check (Multi-Tenant Optimization)
+    yield _progress("fetch_metadata", "Checking for existing index in cloud memory…")
+    try:
+        index, chunks = await asyncio.to_thread(load_index, user_id, repo_url)
+        repo_name = repo_url.rstrip("/").split("/")[-1].replace(".git", "")
+        
+        yield _progress("done", "✅ Index found! Reusing existing repository memory.")
+        yield {
+            "type": "result",
+            "stats": {
+                "repo_name": repo_name,
+                "num_files": len(set(c["file_path"] for c in chunks)),
+                "num_chunks": len(chunks),
+                "index_size": index.ntotal,
+            }
+        }
+        return
+    except FileNotFoundError:
+        # No cache folder, proceed with normal ingestion
+        pass
+    except Exception as e:
+        print(f"⚠️ Cache check warning: {str(e)}")
 
     # 1. Fetch File List Metadata
     yield _progress("fetch_metadata", f"Fetching file list from {repo_url}…")
@@ -51,7 +78,6 @@ async def ingest(repo_url: str):
     async with httpx.AsyncClient(headers=headers, timeout=30.0, verify=ssl_context) as client:
         tasks = [download_file_content(client, f, semaphore) for f in files_metadata]
         
-        # We process downloads and chunking
         downloaded_count = 0
         for future in asyncio.as_completed(tasks):
             file_data = await future
@@ -72,10 +98,10 @@ async def ingest(repo_url: str):
     yield _progress("embed", f"Embedding {len(all_chunks)} chunks…")
     embeddings = await embed_chunks(all_chunks)
 
-    # 4. Build & save FAISS index
+    # 4. Build & save FAISS index (Scoped to User & Repo)
     yield _progress("index", "Building FAISS index…")
     index = await asyncio.to_thread(build_index, embeddings)
-    await asyncio.to_thread(save_index, index, all_chunks)
+    await asyncio.to_thread(save_index, index, all_chunks, user_id, repo_url)
 
     yield _progress("done", "✅ Repository ingested successfully via GitHub API!")
 
@@ -90,18 +116,10 @@ async def ingest(repo_url: str):
     }
 
 
-async def query(question: str, k: int = 5):
-    """Answer a developer question using the indexed repository (Asynchronous & Streaming).
-
-    Args:
-        question: natural-language question.
-        k: number of chunks to retrieve.
-
-    Yields:
-        dict: Metadata (sources) or answer tokens.
-    """
-    # Load persisted index (Disk I/O)
-    index, chunks = await asyncio.to_thread(load_index)
+async def query(question: str, user_id: str, repo_url: str, k: int = 5):
+    """Answer a developer question using the scoped index (Asynchronous & Streaming)."""
+    # Load persisted index for THIS specific user/repo (Disk/GCS)
+    index, chunks = await asyncio.to_thread(load_index, user_id, repo_url)
 
     # Embed the question
     q_embedding = await embed_query(question)

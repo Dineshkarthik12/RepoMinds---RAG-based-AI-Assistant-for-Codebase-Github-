@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import ChatBox from './components/ChatBox';
 
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
 function App() {
   const [repoUrl, setRepoUrl] = useState('');
@@ -11,6 +11,17 @@ function App() {
   const [chatHistory, setChatHistory] = useState([]);
   const [userInput, setUserInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [userId, setUserId] = useState('');
+
+  // 0. Initialize Anonymous Identity
+  useEffect(() => {
+    let id = localStorage.getItem('repominds-user-id');
+    if (!id) {
+      id = crypto.randomUUID();
+      localStorage.setItem('repominds-user-id', id);
+    }
+    setUserId(id);
+  }, []);
 
   // 1. Handle Repository Ingestion (Streaming NDJSON)
   const handleIngest = async () => {
@@ -22,7 +33,7 @@ function App() {
       const response = await fetch(`${API_BASE_URL}/ingest`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ repo_url: repoUrl }),
+        body: JSON.stringify({ repo_url: repoUrl, user_id: userId }),
       });
 
       const reader = response.body.getReader();
@@ -62,7 +73,7 @@ function App() {
       const response = await fetch(`${API_BASE_URL}/query`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: questionText, k: 5 }),
+        body: JSON.stringify({ question: questionText, k: 5, user_id: userId, repo_url: repoUrl }),
       });
 
       if (!response.ok) throw new Error('Query failed');

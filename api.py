@@ -12,7 +12,8 @@ app = FastAPI(title="RepoMinds API", description="Backend for the RepoMinds Reac
 # and the Streamlit frontend (if still used) to connect.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # For development, allowing all; can be restricted later.
+    allow_origins=["*"], # Allow all origins for cloud deployment stability
+ # For development, allowing all; can be restricted later.
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -20,9 +21,12 @@ app.add_middleware(
 
 class IngestRequest(BaseModel):
     repo_url: str
+    user_id: str
 
 class QueryRequest(BaseModel):
     question: str
+    user_id: str
+    repo_url: str
     k: int = 5
 
 @app.post("/ingest")
@@ -36,7 +40,7 @@ async def api_ingest(req: IngestRequest):
 
     async def event_stream():
         try:
-            async for event in ingest(req.repo_url):
+            async for event in ingest(req.repo_url, user_id=req.user_id):
                 yield json.dumps(event) + "\n"
         except Exception as e:
             # Yield error event so the frontend can catch it
@@ -47,12 +51,11 @@ async def api_ingest(req: IngestRequest):
 @app.post("/query")
 async def api_query(req: QueryRequest):
     """
-    Query the indexed repository. Returns a streaming response of JSON lines 
-    representing sources then subsequent answer tokens.
+    Query the indexed repository using the scoped user_id and repo_url.
     """
     async def event_stream():
         try:
-            async for event in query(req.question, k=req.k):
+            async for event in query(req.question, user_id=req.user_id, repo_url=req.repo_url, k=req.k):
                 yield json.dumps(event) + "\n"
         except Exception as e:
             yield json.dumps({"type": "error", "detail": str(e)}) + "\n"
